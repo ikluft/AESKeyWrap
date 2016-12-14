@@ -21,7 +21,7 @@ This is a temporary structure for the AESKeyWrap code for evaluation or actual
 use until it is (hopefully) accepted and integrated into Crypto++.
 
 It has been tested on Fedora and Ubuntu Linux with GNU Make and the g++
-compiler with Crypto++ 5.6.5. Simple enter "make" at the top level.
+compiler with Crypto++ 5.6.5. Enter "make" at the top level or the src directory.
 
 There are known problems compiling this on Crypto++ 5.6.3 due to an error
 in an assertion which was fixed in 5.6.4.
@@ -29,12 +29,13 @@ in an assertion which was fixed in 5.6.4.
 ## Running tests
 The tests from the NIST AES Key Wrap Specification and from RFC3394/RFC5649
 have been included for verification of proper operation of the algorithm.
-Run "make test" to run the tests. It will make multiple subdirectories under
-the test directory to run the tests under C++99, C++03, C++11 and C++14.
+Run "make test" at the top level or in the test directory to run the tests.
+It will make multiple subdirectories under the test directory to run the tests
+under C++99, C++03, C++11 and C++14.
 
 The tests use /usr/bin/prove which is provided by Perl's Test::Harness, in
 order to process TAP (Test Anything Protocol) results from the tests.
-It also makes sepate runs for debug and prod (production/non-debug) builds.
+It also makes separate runs for debug and prod (production/non-debug) builds.
 
 A successful test run looked like this. However changes will happen - look
 for "PASS" at the bottom.
