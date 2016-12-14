@@ -1,0 +1,30 @@
+# AES KeyWrap (RFC3394/RFC5649) implementation on Crypto++
+# makefile for build directory (debug or prod specified by parameters)
+# by Ian Kluft
+# Copyright (c) 2016 Security Together Corporation http://www.securitytogether.com/
+# Contributed to Open Source Crypto++ project by Security Together
+# This is Open Source code licensed under the terms of the Boost Software
+# License 1.0 (like the rest of Crypto++)
+# http://www.boost.org/users/license.html
+
+SRCDIR = ..
+vpath % $(SRCDIR)
+include ../../makefile-common
+
+AR ?= ar
+ARFLAGS ?= -cr # ar needs the dash on OpenBSD
+
+Objects := $(addsuffix .o, $(basename $(notdir $(wildcard $(SRCDIR)/*.cpp))))
+Libraries := aeskw.a
+
+.PHONY : all
+all: $(Objects) $(Libraries)
+
+AesKeyWrap.o:    AesKeyWrap.h
+
+aeskw.a: AesKeyWrap.o
+	$(AR) $(ARFLAGS) $@ AesKeyWrap.o
+
+.PHONY : clean
+clean :
+	-rm -f $(Objects)

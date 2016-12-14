@@ -1,0 +1,35 @@
+# AES KeyWrap (RFC3394/RFC5649) implementation on Crypto++
+# makefile for test subdirectories (one for each test configuration)
+# by Ian Kluft
+# Copyright (c) 2016 Security Together Corporation http://www.securitytogether.com/
+# Contributed to Open Source Crypto++ project by Security Together
+# This is Open Source code licensed under the terms of the Boost Software
+# License 1.0 (like the rest of Crypto++)
+# http://www.boost.org/users/license.html
+
+SRCDIR = ../../src
+vpath % $(SRCDIR)
+include ../../makefile-common
+
+EXTRADEBUG=-DEXTRADEBUG=0
+TestObjects := AesKeyWrap.o AesKeyWrapTest.o
+TestExecs := AesKeyWrapTest.t
+
+.PHONY : all
+all: $(TestExecs)
+
+.PHONY : test
+test: Makefile testbyexec
+
+# note: this uses /usr/bin/prove provided by Perl's Test::Harness
+.PHONY : testbyexec
+testbyexec: $(TestExecs)
+	PATH="$$PATH:." /usr/bin/prove --exec /usr/bin/env $^
+
+AesKeyWrap.o:		AesKeyWrap.cpp AesKeyWrap.h
+AesKeyWrapTest.t: AesKeyWrapTest.o AesKeyWrap.o
+	$(LINK.o) $^ $(LOADLIBES) $(LDLIBS) -o $@
+
+.PHONY : clean
+clean :
+	-rm -f $(TestObjects) $(TestExecs)
