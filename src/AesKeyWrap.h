@@ -5,6 +5,106 @@
 // This is Open Source code licensed under the terms of the Boost Software License 1.0
 // (like the rest of Crypto++) http://www.boost.org/users/license.html 
 
+//! \file AesKeyWrap.h
+//! \brief classes for AES Key Wrap (RFC3394/RFC5649) algorithm
+//! \details AES Key Wrap uses a key encryption key (KEK) to encrypt or decrypt a longer key
+//!   and possibly other encryption parameters
+//!
+//! See the AES Key Wrap definition RFC and updated algorithm with padding.
+//! * [RFC3394 "Advanced Encryption Standard (AES) Key Wrap Algorithm"](https://tools.ietf.org/html/rfc3394.html)
+//!   (algorithm outlined in comments below)
+//! * [RFC 5649 "Advanced Encryption Standard (AES) Key Wrap with Padding Algorithm"](https://tools.ietf.org/html/rfc5649.html)
+//!   (algorithm not repeated here, minor additions to add padding if KEK length is not a multiple of a block)
+//!
+//! The following are algorithm notations from RFC3394:
+//! - AES(K, W)
+//!    + Encrypt W using the AES codebook with key K
+//! - AES-1(K, W)
+//!    + Decrypt W using the AES codebook with key K
+//! - MSB(j, W)
+//!    + Return the most significant j bits of W
+//! - LSB(j, W)
+//!    + Return the least significant j bits of W
+//! - B1 ^ B2
+//!    + The bitwise exclusive or (XOR) of B1 and B2
+//! - B1 | B2
+//!    + Concatenate B1 and B2
+//! - K
+//!    + The key-encryption key K
+//! - n
+//!    + The number of 64-bit key data blocks
+//! - s
+//!    + The number of steps in the wrapping process, s = 6n
+//! - P[i]
+//!    + The ith plaintext key data block
+//! - C[i]
+//!    + The ith ciphertext data block
+//! - A
+//!    + The 64-bit integrity check register
+//! - R[i]
+//!    + An array of 64-bit registers where i = 0, 1, 2, ..., n
+//! - A[t], R[i][t]
+//!    + The contents of registers A and R[i] after encryption step t.
+//! - IV
+//!    + The 64-bit initial value used during the wrapping process.
+//! 
+//! RFC5649 adds the following notations:
+//! - ENC(K,W)
+//!    + encrypt - synonym for AES(K,W)
+//! - DEC(K,W)
+//!    + decrypt - synonym for AES-1(K,W)
+//! - m
+//!    + The number of octets in the key data
+//! - Q[i]
+//!    + The ith plaintext octet in the key data
+//!
+//! RFC3394 defined the AES KeyWrap encryption (wrap) process as follows (2nd method):
+//! - Inputs
+//!   + Plaintext, n 64-bit values {P1, P2, ..., Pn}, and Key, K (the KEK).
+//! - Outputs
+//!   + Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}.
+//! - Steps:
+//!   1. Initialize variables.
+//!     Set A = IV, an initial value (see 2.2.3)
+//!     For i = 1 to n
+//!       R[i] = P[i]
+//!   2. Calculate intermediate values.
+//!     For j = 0 to 5
+//!       For i=1 to n
+//!         B = AES(K, A | R[i])
+//!         A = MSB(64, B) ^ t where t = (n*j)+i
+//!         R[i] = LSB(64, B)
+//!   3. Output the results.
+//!     Set C[0] = A
+//!     For i = 1 to n
+//!       C[i] = R[i]
+//!
+//! RFC3394 defined the AES KeyWrap decryption (unwrap) process as follows (2nd method):
+//! - Inputs
+//!   + Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}, and Key, K (the KEK).
+//! - Outputs
+//!   + Plaintext, n 64-bit values {P0, P1, K, Pn}.
+//! - Steps:
+//!   1. Initialize variables.
+//!     Set A = C[0]
+//!     For i = 1 to n
+//!       R[i] = C[i]
+//!   2. Compute intermediate values.
+//!     For j = 5 to 0
+//!       For i = n to 1
+//!         B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
+//!         A = MSB(64, B)
+//!         R[i] = LSB(64, B)
+//!   3. Output results.
+//!     If A is an appropriate initial value (see 2.2.3),
+//!     Then
+//!       For i = 1 to n
+//!         P[i] = R[i]
+//!     Else
+//!       Return an error
+//!
+//! \sa [Key Wrap on Wikipedia](https://en.wikipedia.org/wiki/Key_Wrap)
+
 #ifndef AESKEYWRAP_H
 #define AESKEYWRAP_H
 
@@ -19,79 +119,7 @@
 namespace AesKeyWrap {
 using namespace CryptoPP;
 
-// See the AES Key Wrap definition RFC and update
-// * RFC3394 "Advanced Encryption Standard (AES) Key Wrap Algorithm"
-//   https://tools.ietf.org/html/rfc3394.html
-//   (algorithm outlined in comments below)
-// * RFC 5649 "Advanced Encryption Standard (AES) Key Wrap with Padding Algorithm"
-//   https://tools.ietf.org/html/rfc5649.html
-//   (algorithm not repeated here, relatively minor additions)
-//
-// algorithm notations from RFC3394:
-// AES(K, W)      Encrypt W using the AES codebook with key K
-// AES-1(K, W)    Decrypt W using the AES codebook with key K
-// MSB(j, W)      Return the most significant j bits of W
-// LSB(j, W)      Return the least significant j bits of W
-// B1 ^ B2        The bitwise exclusive or (XOR) of B1 and B2
-// B1 | B2        Concatenate B1 and B2
-// K              The key-encryption key K
-// n              The number of 64-bit key data blocks
-// s              The number of steps in the wrapping process, s = 6n
-// P[i]           The ith plaintext key data block
-// C[i]           The ith ciphertext data block
-// A              The 64-bit integrity check register
-// R[i]           An array of 64-bit registers where i = 0, 1, 2, ..., n
-// A[t], R[i][t]  The contents of registers A and R[i] after encryption step t.
-// IV             The 64-bit initial value used during the wrapping process.
-// 
-// RFC5649 adds the following:
-// ENC(K,W)       encrypt - synonym for AES(K,W)
-// DEC(K,W)       decrypt - synonym for AES-1(K,W)
-// m              The number of octets in the key data
-// Q[i]           The ith plaintext octet in the key data
-
-// RFC3394 defined the AES KeyWrap encryption (wrap) process as follows (2nd method):
-// Inputs:  Plaintext, n 64-bit values {P1, P2, ..., Pn}, and
-//             Key, K (the KEK).
-//    Outputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}.
-//    1) Initialize variables.
-//        Set A = IV, an initial value (see 2.2.3)
-//        For i = 1 to n
-//            R[i] = P[i]
-//    2) Calculate intermediate values.
-//        For j = 0 to 5
-//            For i=1 to n
-//                B = AES(K, A | R[i])
-//                A = MSB(64, B) ^ t where t = (n*j)+i
-//                R[i] = LSB(64, B)
-//    3) Output the results.
-//        Set C[0] = A
-//        For i = 1 to n
-//            C[i] = R[i]
-
-// RFC3394 defined the AES KeyWrap decryption (unwrap) process as follows (2nd method):
-// Inputs:  Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}, and
-//             Key, K (the KEK).
-//    Outputs: Plaintext, n 64-bit values {P0, P1, K, Pn}.
-//    1) Initialize variables.
-//        Set A = C[0]
-//        For i = 1 to n
-//            R[i] = C[i]
-//    2) Compute intermediate values.
-//        For j = 5 to 0
-//            For i = n to 1
-//                B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
-//                A = MSB(64, B)
-//                R[i] = LSB(64, B)
-//    3) Output results.
-//    If A is an appropriate initial value (see 2.2.3),
-//    Then
-//        For i = 1 to n
-//            P[i] = R[i]
-//    Else
-//        Return an error
-
-// KeyWrap class contains wrapping/unwrapping and related utility functions
+//! \brief AES Key Wrap wrapping/unwrapping and related utility functions
 class KeyWrap : public Algorithm {
 	public:
 	// Crypto++ library algorithm declaration
