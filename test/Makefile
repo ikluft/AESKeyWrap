@@ -10,7 +10,7 @@
 EXTRADEBUG=-DEXTRADEBUG=0
 include $(abspath ..)/makefile-common
 
-CPPLEVELS = 98 03 11 14
+CPPLEVELS = 98 03 11 14 17
 TESTDIRS = $(foreach level, $(CPPLEVELS), cpp$(level) cpp$(level)-debug)
 TESTMAKEFILES = $(foreach dir, $(TESTDIRS), $(dir)/Makefile)
 
